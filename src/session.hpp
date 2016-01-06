@@ -100,8 +100,7 @@ dispatcher::dispatcher(
 ) :
 		context_(io_in),
 		logdir_(log_in),
-		wts_(wts_in),
-		root(root_nodes)
+		wts_(wts_in)
 {
 }
 
@@ -197,12 +196,11 @@ ssp dispatcher::make_ss(string device_name) {
 /* December 15, 2015 :: network communications */
 
 void dispatcher::execute_network_command( sentence command, nsp reference) {
-	auto rootp = make_shared<node>(root);
-	auto to_exec = execute_tree(command, rootp);
+	auto to_exec = walk_tree(command, root);
 	(*to_exec)(reference);
 }
 
-nodep dispatcher::execute_tree( sentence command, nodep current) {
+nodep dispatcher::walk_tree( sentence command, nodep current) {
 	if( command.empty() || current->is_leaf())
 		return current;
 	else {
@@ -212,7 +210,7 @@ nodep dispatcher::execute_tree( sentence command, nodep current) {
 		else {
 			command.pop_front();
 			current = iter->second;
-			return execute_tree(command, current);
+			return walk_tree(command, current);
 		}
 	}
 }
@@ -364,84 +362,180 @@ int dispatcher::store_pbs(stringp str_in) {
 
 /* December 16, 2015 :: command tree building */
 
-void dispatcher::build_command_tree() {
-	if(!added_static_leaves)
-		add_static_leaves();
 
-	purge_dynamic_leaves();
-	add_dynamic_leaves();
+void dispatcher::build_command_tree() {
+	root->purge();
+	make_branches();
+	make_leaves();
+	make_trunk();
+	root->spawn(root_nodes);
 }
 
-void dispatcher::add_static_leaves() {
+void dispatcher::make_trunk() {
 	auto self (shared_from_this());
-	root.child("get")->child("ports_for_zabbix")->set_fn(
-			std::function<void(nsp)>(
-					bind(&dispatcher::ports_for_zabbix,self,_1)));
-	root.child("get")->child("stored_pbs")->set_fn(
-			std::function<void(nsp)>(
-					bind(&dispatcher::stored_pbs,self,_1)));
-	root.child("get")->child("stored_ascii_waveforms")->set_fn(
-			std::function<void(nsp)>(
-					bind(&dispatcher::stored_ascii_waveforms,self,_1)));
+
+	root_nodes.emplace("help", std::make_shared<node>(
+			help_nodes,
+			node_fn(bind(&dispatcher::help, self, _1))));
+	root_nodes.emplace("get", std::make_shared<node>(
+			get_nodes,
+			node_fn(bind(&dispatcher::get_help, self, _1))));
+	root_nodes.emplace("subscribe", std::make_shared<node>(
+			subscribe_nodes,
+			node_fn(bind(&dispatcher::subscribe_help, self, _1))));
+	root_nodes.emplace("unsubscribe", std::make_shared<node>(
+			unsubscribe_nodes,
+			node_fn(bind(&dispatcher::unsubscribe_help, self, _1))));
+}
+
+void dispatcher::make_branches() {
+	auto self (shared_from_this());
+	help_nodes.clear();
+	get_nodes.clear();
+	subscribe_nodes.clear();
+	unsubscribe_nodes.clear();
+
+	help_nodes.emplace("help", std::make_shared<node>(
+			node_fn( bind(&dispatcher::help_help, self, _1))));
+	help_nodes.emplace("get", std::make_shared<node>(
+			node_fn( bind(&dispatcher::help_get, self, _1))));
+	help_nodes.emplace("subscribe", std::make_shared<node>(
+			node_fn( bind(&dispatcher::help_subscribe, self, _1))));
+	help_nodes.emplace("unsubscribe", std::make_shared<node>(
+			node_fn( bind(&dispatcher::help_unsubscribe, self, _1))));
+
+	get_nodes.emplace("help",std::make_shared<node>(
+			node_fn( bind(&dispatcher::get_help, self, _1))));
+	get_nodes.emplace("rx", std::make_shared<node>(
+			node_fn( bind(&dispatcher::get_help_rx, self, _1))));
+	get_nodes.emplace("tx", std::make_shared<node>(
+			node_fn( bind(&dispatcher::get_help_tx, self, _1))));
+	get_nodes.emplace("messages_received_tot", std::make_shared<node>(
+			node_fn( bind(&dispatcher::get_help_messages_received_tot, self, _1))));
+	get_nodes.emplace("messages_lost_tot", std::make_shared<node>(
+			node_fn( bind(&dispatcher::get_help_messages_lost_tot, self, _1))));
+	get_nodes.emplace("ports_for_zabbix", std::make_shared<node>(
+			node_fn( bind(&dispatcher::ports_for_zabbix,self,_1))));
+	get_nodes.emplace("stored_pbs", std::make_shared<node>(
+			node_fn( bind(&dispatcher::stored_pbs,self,_1))));
+	get_nodes.emplace("stored_ascii_waveforms", std::make_shared<node>(
+			node_fn( bind(&dispatcher::stored_ascii_waveforms,self,_1))));
+
+	subscribe_nodes.emplace("help", std::make_shared<node>(
+			node_fn( bind(&dispatcher::subscribe_help, self, _1))));
+	subscribe_nodes.emplace("to", std::make_shared<node>(
+			node_fn( bind(&dispatcher::subscribe_help, self, _1))));
+
+	unsubscribe_nodes.emplace("help", std::make_shared<node>(
+			node_fn( bind(&dispatcher::unsubscribe_help, self, _1))));
+	unsubscribe_nodes.emplace("from", std::make_shared<node>(
+			node_fn( bind(&dispatcher::unsubscribe_help, self, _1))));
+
 
 	for(auto channel : subscriptions) {
-		root.child("subscribe")->child("to")->spawn(
-				channel.first, make_shared<node>());
-		root.child("unsubscribe")->child("from")->spawn(
-				channel.first, make_shared<node>());
-
-		root.child("subscribe")->child("to")->child(channel.first)->set_fn(
-				std::function<void(nsp)>(
-								bind(&dispatcher::subscribe,self,_1,channel.first)));
-		root.child("unsubscribe")->child("from")->child(channel.first)->set_fn(
-				std::function<void(nsp)>(
-						bind(&dispatcher::unsubscribe,self,_1,channel.first)));
+		subscribe_nodes["to"]->spawn(
+				channel.first,
+				make_shared<node>(
+						node_fn( bind(&dispatcher::subscribe, self, _1, channel.first))));
+		unsubscribe_nodes["from"]->spawn(
+				channel.first,
+				make_shared<node>(
+						node_fn( bind(&dispatcher::unsubscribe, self, _1, channel.first))));
 	}
-
-	root.child("subscribe")->child("to")->spawn(
-			"board", make_shared<node>());
-	root.child("unsubscribe")->child("to")->spawn(
-				"board", make_shared<node>());
-
-	added_static_leaves = true;
 }
 
-void dispatcher::purge_dynamic_leaves() {
-	root.child("get")->child("rx")->purge();
-	root.child("get")->child("tx")->purge();
-	root.child("get")->child("messages_received_tot")->purge();
-	root.child("get")->child("messages_lost_tot")->purge();
-}
-
-void dispatcher::add_dynamic_leaves() {
+void dispatcher::make_leaves() {
 	for(auto port : serial_reading) {
-		root.child("get")->child("rx")->spawn(
+		get_nodes["rx"]->spawn(
 			port->get_name(),
 			make_shared<node>(
-					std::function<void(nsp)>(
-							bind(&ss::get_rx,port,_1))));
-		root.child("get")->child("messages_received_tot")->spawn(
+					node_fn( bind(&ss::get_rx,port,_1))));
+		get_nodes["messages_received_tot"]->spawn(
 			port->get_name(),
 			make_shared<node>(
-					std::function<void(nsp)>(
-							bind(&ss::get_messages_received_tot,port,_1))));
-		root.child("get")->child("messages_lost_tot")->spawn(
+					node_fn( bind(&ss::get_messages_received_tot,port,_1))));
+		get_nodes["messages_lost_tot"]->spawn(
 			port->get_name(),
 			make_shared<node>(
-					std::function<void(nsp)>(
-							bind(&ss::get_messages_lost_tot,port,_1))));
+					node_fn( bind(&ss::get_messages_lost_tot,port,_1))));
 	}
 
 	for(auto port : serial_writing) {
-		root.child("get")->child("tx")->spawn(
+		get_nodes["tx"]->spawn(
 			port->get_name(),
 			make_shared<node>(
-					std::function<void(nsp)>(
-							bind(&ss::get_tx,port,_1))));
+					node_fn( bind(&ss::get_tx,port,_1))));
 	}
 
 }
 
+/*=============================================================================
+ * December 16, 2015
+ *
+ * The following return help strings for network commands.
+ */
+
+void dispatcher::help(nsp in) {
+	string to_write ("help called.\n");
+	in->do_write(make_shared<string>(to_write));
+}
+
+void dispatcher::help_help(nsp in) {
+	string to_write ("help_help called.\n");
+	in->do_write(make_shared<string>(to_write));
+}
+
+void dispatcher::get_help(nsp in) {
+	string to_write ("get_help called.\n");
+	in->do_write(make_shared<string>(to_write));
+}
+
+void dispatcher::get_help_rx(nsp in) {
+	string to_write ("get_help_rx(called.\n");
+	in->do_write(make_shared<string>(to_write));
+}
+
+void dispatcher::get_help_tx(nsp in) {
+	string to_write ("get_help_tx called.\n");
+	in->do_write(make_shared<string>(to_write));
+}
+
+void dispatcher::get_help_messages_received_tot(nsp in) {
+	string to_write ("get_help_messages_received_tot called.\n");
+	in->do_write(make_shared<string>(to_write));
+}
+
+void dispatcher::get_help_messages_lost_tot(nsp in) {
+	string to_write ("get_help_messages_lost_tot called.\n");
+	in->do_write(make_shared<string>(to_write));
+}
+
+void dispatcher::get_help_ports_for_zabbix(nsp in) {
+	string to_write ("get_help_ports_for_zabbix called.\n");
+	in->do_write(make_shared<string>(to_write));
+}
+
+void dispatcher::help_get(nsp in) {
+	get_help(in);
+}
+
+void dispatcher::subscribe_help(nsp in) {
+	string to_write ("subscribe_help() called.\n");
+	in->do_write(make_shared<string>(to_write));
+}
+
+void dispatcher::help_subscribe(nsp in) {
+	subscribe_help(in);
+}
+
+void dispatcher::unsubscribe_help(nsp in) {
+	string to_write ("unsubscribe_help called.\n");
+	in->do_write(make_shared<string>(to_write));
+}
+
+void dispatcher::help_unsubscribe(nsp in) {
+	unsubscribe_help(in);
+}
 
 } //namespace
 

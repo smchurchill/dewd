@@ -183,12 +183,8 @@ int main(int argc, char** argv) {
 			dis->make_ns(ep);
 		}
 
-		for(auto it : baddr) {
-			tcp::endpoint ep (stoe(it));
-			dis->make_fp_ns(ep);
-		}
-
 		dis->build_command_tree();
+		dis->see_tree();
 
 		/*
 		 * Set signals to catch for graceful termination.

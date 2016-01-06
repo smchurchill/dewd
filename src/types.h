@@ -38,6 +38,8 @@ typedef ::std::shared_ptr<pBuff> pBuffp;
 typedef ::std::deque<::std::string> sentence;
 typedef ::std::shared_ptr<::std::string> stringp;
 
+typedef ::std::function<void(nsp)> node_fn;
+
 }; // namespace dew
 
 #endif /* TYPES_H_ */

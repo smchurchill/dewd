@@ -177,6 +177,7 @@ sentence ns::buffer_to_sentence(int len) {
 	return s;
 }
 
+
 } // dew namespace
 
 #endif /* NETWORK_SESSION_HPP_ */

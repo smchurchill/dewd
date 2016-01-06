@@ -68,20 +68,10 @@ using ::std::reverse_copy;
 
 
 void node::spawn(pair<string,nodep> child) {
-	if(child.second->is_owned())
-		return;
-	else {
-		child.second->own();
-		children.emplace(child);
-	}
+	children.insert(child);
 }
 void node::spawn(string str_in, nodep node_in) {
-	if(node_in->is_owned())
-		return;
-	else {
-		node_in->own();
-		children.emplace(make_pair(str_in,node_in));
-	}
+	spawn(make_pair(str_in, node_in));
 }
 
 void node::spawn(map<string,nodep> children_in) {
@@ -120,7 +110,6 @@ void node::operator()(nsp in) const {
 		in->do_write(make_shared<string>(descendants(0)));
 	}
 }
-
 
 } // dew namespace
 

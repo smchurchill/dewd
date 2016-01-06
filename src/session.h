@@ -75,7 +75,6 @@ private:
 
 	const int max_size = 10000;
 	bool local_logging_enabled = false;
-	bool added_static_leaves = false;
 
 
 /* Method type: creation and destruction of sessions */
@@ -98,7 +97,7 @@ private:
 /* Method type: network communications */
 public:
 	void execute_network_command(sentence, nsp);
-	nodep execute_tree( sentence, nodep);
+	nodep walk_tree( sentence, nodep);
 	void delivery(stringp);
 	string get_command_tree_from_root();
 
@@ -112,9 +111,6 @@ private:
 	void subscribe(nsp, string);
 	void unsubscribe(nsp, string);
 
-	void board_subscribe(nsp, string);
-	void board_unsubscribe(nsp, string);
-
 	void ports_for_zabbix(nsp);
 	void stored_pbs(nsp);
 	void stored_ascii_waveforms(nsp);
@@ -127,71 +123,38 @@ private:
 public:
 	void build_command_tree();
 private:
-	void purge_dynamic_leaves();
-	void add_dynamic_leaves();
-	void add_static_leaves();
-
+	void make_trunk();
+	void make_branches();
+	void make_leaves();
 
 /* Method type: basic information */
 public:
 	string get_logdir() { return logdir_; }
-	sentence get_known_boards() { return boards; }
+	void see_tree() {dprint(root->descendants(0));}
 
 /* Member type: command tree from root */
 private:
-	map<string,nodep> help_nodes = {
-			{string("help"), std::make_shared<node>(
-					std::function<void(nsp)>(&help_help))},
-			{string("get"), std::make_shared<node>(
-					std::function<void(nsp)>(&help_get))},
-			{string("subscribe"), std::make_shared<node>(
-					std::function<void(nsp)>(&help_subscribe))},
-			{string("unsubscribe"), std::make_shared<node>(
-					std::function<void(nsp)>(&help_unsubscribe))}
-	};
+	void help(nsp);
+	void help_help(nsp);
+	void get_help(nsp);
+	void get_help_rx(nsp);
+	void get_help_tx(nsp);
+	void get_help_messages_received_tot(nsp);
+	void get_help_messages_lost_tot(nsp);
+	void get_help_ports_for_zabbix(nsp);
+	void help_get(nsp);
+	void subscribe_help(nsp);
+	void help_subscribe(nsp);
+	void unsubscribe_help(nsp);
+	void help_unsubscribe(nsp);
 
-	map<string,nodep> get_nodes = {
-			{string("help"),std::make_shared<node>(
-					std::function<void(nsp)>(&get_help))},
-			{string("rx"), std::make_shared<node>(
-					std::function<void(nsp)>(&get_help_rx))},
-			{string("tx"), std::make_shared<node>(
-					std::function<void(nsp)>(&get_help_tx))},
-			{string("messages_received_tot"), std::make_shared<node>(
-					std::function<void(nsp)>(&get_help_messages_received_tot))},
-			{string("messages_lost_tot"), std::make_shared<node>(
-					std::function<void(nsp)>(&get_help_messages_lost_tot))},
-			{string("ports_for_zabbix"), std::make_shared<node>()},
-			{string("stored_pbs"), std::make_shared<node>()},
-			{string("stored_ascii_waveforms"), std::make_shared<node>()},
-	};
+	map<string,nodep> help_nodes;
+	map<string,nodep> get_nodes;
+	map<string,nodep> subscribe_nodes;
+	map<string,nodep> unsubscribe_nodes;
+	map<string,nodep> root_nodes;
 
-	map<string,nodep> subscribe_nodes = {
-			{string("help"), std::make_shared<node>(
-					std::function<void(nsp)>(&subscribe_help))},
-			{string("to"), std::make_shared<node>(
-					std::function<void(nsp)>(&subscribe_help))}
-	};
-
-	map<string,nodep> unsubscribe_nodes = {
-			{string("help"),std::make_shared<node>(
-					std::function<void(nsp)>(&unsubscribe_help))},
-			{string("from"), std::make_shared<node>(
-					std::function<void(nsp)>(&unsubscribe_help))}
-	};
-
-	map<string,nodep> root_nodes = {
-			{string("help"), std::make_shared<node>(help_nodes,
-					std::function<void(nsp)>(&help))},
-			{string("get"), std::make_shared<node>(get_nodes,
-					std::function<void(nsp)>(&get_help))},
-			{string("subscribe"), std::make_shared<node>(subscribe_nodes,
-					std::function<void(nsp)>(&subscribe_help))},
-			{string("unsubscribe"), std::make_shared<node>(unsubscribe_nodes,
-					std::function<void(nsp)>(&unsubscribe_help))}
-	};
-
-	node root;
+	nodep root = make_shared<node>();
 };
 
 

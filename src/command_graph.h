@@ -14,8 +14,8 @@ class node : public enable_shared_from_this<node> {
 public:
 	node(){}
 	node(map<string,nodep> children_in) : children(children_in) {}
-	node(std::function<void(nsp)> fn_in) : fn(fn_in) {}
-	node(map<string,nodep> children_in, std::function<void(nsp)> fn_in) :
+	node(node_fn fn_in) : fn(fn_in) {}
+	node(map<string,nodep> children_in, node_fn fn_in) :
 		children(children_in), fn(fn_in) {}
 
 	void spawn(pair<string,nodep>);
@@ -38,9 +38,11 @@ public:
 
 private:
 	map<string,nodep> children;
-	std::function<void(nsp)> fn;
+	node_fn fn;
 	bool owned = false;
 };
+
+
 
 } //dew namespace
 
