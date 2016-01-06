@@ -183,7 +183,6 @@ int main(int argc, char** argv) {
 		}
 
 		dis->build_command_tree();
-		dis->see_tree();
 
 		/*
 		 * Set signals to catch for graceful termination.

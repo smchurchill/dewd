@@ -35,6 +35,7 @@ using ::std::move;
 
 using ::std::unique_ptr;
 using ::std::shared_ptr;
+using ::std::make_shared;
 using ::std::weak_ptr;
 using ::std::enable_shared_from_this;
 

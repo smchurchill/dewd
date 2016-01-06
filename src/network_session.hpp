@@ -31,7 +31,6 @@
 #include "utils.h"
 
 #include "network_session.h"
-#include "network_help.h"
 #include "session.h"
 
 
@@ -109,11 +108,6 @@ void ns::do_write(stringp message) {
 	}
 }
 
-void ns::do_connect() {
-	auto self (shared_from_this());
-	socket_.async_connect(endpoint_, bind(&ns::handle_connect, self, _1));
-}
-
 void ns::do_accept() {
 	auto self (shared_from_this());
 	acceptor_.async_accept(socket_,
@@ -158,12 +152,6 @@ void ns::handle_write(
 	return;
 }
 
-void ns::handle_connect(boost::system::error_code ec) {
-	if(ec) {
-		//oh no!
-	}
-	return;
-}
 
 sentence ns::buffer_to_sentence(int len) {
 	stringstream ss;

@@ -41,7 +41,6 @@
 #include "utils.h"
 #include "serial_session.h"
 #include "network_session.h"
-#include "network_help.h"
 #include "command_graph.h"
 
 #include "session.h"
