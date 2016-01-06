@@ -43,7 +43,7 @@ public:
 
 	~network_session() {};
 
-	shared_ptr<network_session> get_ns();
+	nsp get_ns();
 
 	void start_accept() { if(acceptor_.is_open()) do_accept(); }
 	void start_read() { if(socket_.is_open()) do_read(); }

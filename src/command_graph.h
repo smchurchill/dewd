@@ -8,6 +8,7 @@
 #ifndef COMMAND_GRAPH_H_
 #define COMMAND_GRAPH_H_
 
+
 namespace dew {
 
 class node : public enable_shared_from_this<node> {
