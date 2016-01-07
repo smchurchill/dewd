@@ -77,6 +77,10 @@ using ::std::move;
 
 using ::std::enable_shared_from_this;
 
+using ::std::front_inserter;
+using ::std::back_inserter;
+
+
 /* December 16, 2015 :: constructors */
 
 dispatcher::dispatcher(
@@ -219,6 +223,24 @@ void dispatcher::delivery(shared_ptr<string> message) {
 	context_.service->post(bind(&dispatcher::forward,self,message));
 }
 
+stringp dispatcher::wrap(stringp str_in) {
+	/* The encoded message is simply
+	 * 	ff fe <msg> <crc8 of msg> fe ff
+	 *
+	 * This allows waltr some way of delimiting full messages.
+	 */
+
+	pBuff base (str_in->size());
+	bBuff delim = {0xfe, 0xff};
+	copy(str_in->begin(), str_in->end(), base.begin());
+	base.push_back(crc8(make_iterator_range(str_in->begin(),str_in->end())));
+	copy(delim.begin(), delim.end(), front_inserter(base));
+	copy(delim.begin(), delim.end(), back_inserter(base));
+
+	auto str_return = make_shared<string>(base.begin(),base.end());
+	return str_return;
+}
+
 void dispatcher::forward(shared_ptr<string> message) {
 
 	auto fpm = make_shared<flopointpb::FloPointMessage>();
@@ -237,8 +259,8 @@ void dispatcher::forward(shared_ptr<string> message) {
 		for(auto subscriber : subscriptions["protobuf_all"])
 				subscriber->do_write(message);
 
-		for(auto subscriber : subscriptions[fpm->name()])
-				subscriber->do_write(message);
+		for(auto subscriber : subscriptions[fpm->name()+"_enc"])
+				subscriber->do_write(wrap(message));
 
 		if(local_logging_enabled){
 			FILE * log = fopen((logdir_ + "dispatch.message.log").c_str(),"a");

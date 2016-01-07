@@ -126,7 +126,6 @@ private:
 /* Method type: complicated information handling */
 	void set_a_check();
 	void check_the_deque();
-	void deliver(shared_ptr<string>);
 	int scrub(pBuff::iterator);
 	int pop_counters();
 	bBuffp generate_message();

@@ -60,16 +60,16 @@ private:
 			{"raw_waveforms",{}},
 			{"ascii_waveforms",{}},
 			{"protobuf_all",{}},
-			{"0of09",{}},
-			{"1of09",{}},
-			{"2of09",{}},
-			{"3of09",{}},
-			{"4of09",{}},
-			{"5of09",{}},
-			{"6of09",{}},
-			{"7of09",{}},
-			{"8of09",{}},
-			{"9of09",{}}
+			{"0of09_enc",{}},
+			{"1of09_enc",{}},
+			{"2of09_enc",{}},
+			{"3of09_enc",{}},
+			{"4of09_enc",{}},
+			{"5of09_enc",{}},
+			{"6of09_enc",{}},
+			{"7of09_enc",{}},
+			{"8of09_enc",{}},
+			{"9of09_enc",{}}
 	};
 
 	deque<stringp> pbs_locations;
@@ -103,6 +103,7 @@ public:
 	string get_command_tree_from_root();
 
 private:
+	stringp wrap(stringp);
 	void forward(stringp);
 	void forward_handler(const error_code&,size_t, bBuffp, nsp);
 
